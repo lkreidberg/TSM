@@ -160,15 +160,16 @@ df['RR_RE'] = df['RR_RP']*df['pl_rade']
 df['delta_Na'] = (df['RR_RE']/df['st_rad']*ReRs)**2*1e6
 
 
+#############################################################
+#Remove certain planets
 
-
-
-
-#ind1 = (df['pl_rade'] > 40)
 #remove planets with large errors on the mass
 ind2 = np.sqrt(df['pl_bmasseerr1']**2+df['pl_bmasseerr2']**2)/df['pl_bmasse'] > 0.5
 #remove planets with large errors on the radius
 ind3 = np.sqrt(df['pl_radeerr1']**2+df['pl_radeerr2']**2)/df['pl_rade'] > 0.5
+
+
+#ind1 = (df['pl_rade'] > 40)
 #ind4 = df['pl_orbper'] > 10
 #ind5 = df['efficiency_kmag'] < 0.3
 #ind6 = df['pl_Teq'] < 1000
@@ -181,6 +182,8 @@ df = df[~ind]
 
 
 
+
+###############################################################
 # Make trimmed version of table
 df_short = df[['pl_name', 'pl_orbper', 'pl_rade', 'pl_ratror', 'pl_rprs2', 'pl_ratdor'
     , 'sy_kmag', 'pl_Teq','pl_Trock',
@@ -195,7 +198,7 @@ df.to_csv("NASAExoArchive_" + datetime.today().strftime("%Y-%m-%d") + "_aggregat
 df_short.to_csv("NASAExoArchive_" + datetime.today().strftime("%Y-%m-%d") + "_aggregate_short.csv")
 
 
-with open('table.txt', 'w') as f:
+with open('table_short.txt', 'w') as f:
     print(df_short.sort_values(by=['ed_1.4_Trock'], ascending=False).to_string(), file=f)
 
-df_short.sort_values(by=['TSM'], ascending=False).to_csv("test.csv", sep=',')
+df_short.sort_values(by=['TSM'], ascending=False).to_csv("table_short.csv", sep=',')
