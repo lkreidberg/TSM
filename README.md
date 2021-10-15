@@ -5,7 +5,8 @@ NASAExoArchive_download_data.py: Downloads all transiting, confirmed planets fro
 
 - default_params0.csv: All confirmed planets from not default publications 
 - default_params1.csv: All confirmed planets from default publication  
-The date of publish
+
+The date of last download is saved in last_update_time.txt.
 
 ## 2. Aggregating the data
 NASAExoArchive_aggregator.py: Creates a csv file (NASAExoArchive_[date]_aggregate.csv) for all planets with the most recently published value for each parameter (note that values may come from multiple papers!). Adds new columns for the TSM and ESM (using the formulas from Kempton et al. 2018).
@@ -14,7 +15,7 @@ NASAExoArchive_aggregator.py: Creates a csv file (NASAExoArchive_[date]_aggregat
 # Notes:
 
 ## Temperature calculation
-To calculate planet equilibrium temperature ('pl_Teq'), which is often missing, the code 
+To calculate planet equilibrium temperature ('pl_Teq'), which is often missing, the code will
  
 - first calculate 'pl_Teq' from insolation                                                 
 - if insolation is unavailable, try published equilibrium temperature (note that this may have a range of assumptions about Bond albedo and heat redistribution)
