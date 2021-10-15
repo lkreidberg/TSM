@@ -1,7 +1,7 @@
 # NASA ExoArchive Aggregator
 
 ## 1. Downloading the data
-NASAExoArchive_download_data.py: Downloads all transiting, confirmed planets from the [NASA Exoplanet Archive][https://exoplanetarchive.ipac.caltech.edu/] and saves them into two csv files
+NASAExoArchive_download_data.py: Downloads all transiting, confirmed planets from the [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/) and saves them into two csv files
 
 - default_params0.csv: All confirmed planets from not default publications 
 - default_params1.csv: All confirmed planets from default publication  
