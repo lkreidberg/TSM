@@ -3,10 +3,11 @@
 
 # # TSM Calculator
 # 
-
+import numpy as np
+if not hasattr(np, "in1d"):
+    np.in1d = np.isin
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
 from datetime import datetime
 from astropy import constants as const
 
@@ -49,11 +50,9 @@ df = pd.concat([df0,df1])
 # This is messy since there are three different datetime formats here.
 # You must make sure that you sort before filtering.
 
-df['dt_obj'] = df['pl_pubdate']
-df['dt_obj'] = pd.to_datetime(df['pl_pubdate'], format="%Y-%m", errors='ignore')
-df['dt_obj'] = pd.to_datetime(df['pl_pubdate'], format="%Y-%m-%d", errors='ignore')
-df['dt_obj'] = pd.to_datetime(df['pl_pubdate'], format="%Y-%m-%d %H:%M", errors='ignore')
-df['dt_obj'] = pd.to_datetime(df['pl_pubdate'], format="%Y-%m", errors='raise')
+df['dt_obj'] = pd.to_datetime(df['pl_pubdate'], format="%Y-%m", errors='coerce')
+df['dt_obj'] = df['dt_obj'].fillna(pd.to_datetime(df['pl_pubdate'], format="%Y-%m-%d", errors='coerce'))
+df['dt_obj'] = df['dt_obj'].fillna(pd.to_datetime(df['pl_pubdate'], format="%Y-%m-%d %H:%M", errors='coerce'))
 
 df = df.sort_values(by='dt_obj', ascending=False)
 
@@ -74,8 +73,8 @@ df = df[data_filter].groupby('pl_name', as_index = False).agg(agg_dict)
 
 
 #fill in columns where mass or radius are only in Jupiter units
-df.pl_rade.fillna(df.pl_radj*Rjup, inplace=True)
-df.pl_bmasse.fillna(df.pl_bmassj*Mjup, inplace=True)
+df['pl_rade'] = df['pl_rade'].fillna(df['pl_radj']*Rjup)
+df['pl_bmasse'] = df['pl_bmasse'].fillna(df['pl_bmassj']*Mjup)
 
 
 #initialize new column for aggregate temperature
@@ -84,11 +83,11 @@ nplanets = len(df)
 #first populate with insolation
 df['pl_Teq'] = 278.*(df['pl_insol'])**0.25
 #if insolation is unavailable, try equilibrium temperature
-df.pl_Teq.fillna(df.pl_eqt, inplace=True)
+df['pl_Teq'] = df['pl_Teq'].fillna(df['pl_eqt'])
 #if equilibrium temperature is unavailable, calculate from a/Rs and Teff
-df.pl_Teq.fillna(1/(np.sqrt(2*df['pl_ratdor']))*df['st_teff'], inplace=True)
+df['pl_Teq'] = df['pl_Teq'].fillna(1/(np.sqrt(2*df['pl_ratdor']))*df['st_teff'])
 #if a/Rs is unavailable, calculate it from a [AU] and Rs [Rsun]
-df.pl_Teq.fillna(1/(np.sqrt(2*215.*df['pl_orbsmax']/df['st_rad']))*df['st_teff'], inplace=True)
+df['pl_Teq'] = df['pl_Teq'].fillna(1/(np.sqrt(2*215.*df['pl_orbsmax']/df['st_rad']))*df['st_teff'])
 
 #fill rprs if not given
 df['pl_ratror'] = ReRs*df['pl_rade']/df['st_rad']
@@ -97,7 +96,7 @@ df['pl_ratror'] = ReRs*df['pl_rade']/df['st_rad']
 df['pl_rprs2'] = df['pl_ratror']**2
 
 #scale factor for TSM calculation https://arxiv.org/pdf/1805.03671.pdf
-df['scale'] = 0
+df['scale'] = 0.0
 df.loc[df['pl_rade'] <= 1.5, 'scale'] = 0.19
 df.loc[df['pl_rade'] > 4, 'scale'] = 1.15
 df.loc[(df['pl_rade'] <= 4)&(df['pl_rade'] >2.75), 'scale'] = 1.28
@@ -107,11 +106,11 @@ df.loc[(df['pl_rade'] <= 2.75)&(df['pl_rade'] > 1.5), 'scale'] = 1.26
 df['TSM'] = df['pl_rade']*df['pl_rprs2']/(ReRs**2)*df['pl_Teq']/df['pl_bmasse']*10.**(-0.2*df['sy_jmag'])*df['scale']
 
 #calculates observational efficiency for HST (accounting for brightness of host star)
-df['efficiency'] = 1
+df['efficiency'] = 1.0
 df.loc[df['sy_jmag'] <= 8.8, 'efficiency'] = (1.375*df['sy_jmag']**2 - 1.214*df['sy_jmag'] - 26.68)/64.58
 df.loc[df['sy_jmag'] <= 5., 'efficiency'] = 0.3
 
-df['efficiency_kmag'] = 1
+df['efficiency_kmag'] = 1.0
 df.loc[df['sy_kmag'] <= 8.8, 'efficiency_kmag'] = (1.375*df['sy_kmag']**2 - 1.214*df['sy_kmag'] - 26.68)/64.58
 df.loc[df['sy_kmag'] <= 5., 'efficiency_kmag'] = 0.3
 
@@ -119,19 +118,30 @@ df.loc[df['sy_kmag'] <= 5., 'efficiency_kmag'] = 0.3
 #df['TSM'] = df['TSM']*np.sqrt(df['efficiency'])
 
 # Fill ars if missing: a(AU)/Rs(Ro)*215
-df.pl_ratdor.fillna(df['pl_orbsmax']/df['st_rad']*215, inplace=True)
+df['pl_ratdor'] = df['pl_ratdor'].fillna(df['pl_orbsmax']/df['st_rad']*215)
 
 # Fill insolation if missing: Ts^4/ars^2 * (215^2/5772^4) = Ts^4/ars^2 * 4.166e-11
-df.pl_insol.fillna(df['st_teff']**4/df['pl_ratdor']**2*4.166e-11, inplace=True)
+df['pl_insol'] = df['pl_insol'].fillna(df['st_teff']**4/df['pl_ratdor']**2*4.166e-11)
+
+m = 1.33
+b = 1660
+Tbar = 1524
+df['pl_tday'] = m*(df['pl_Teq'] - Tbar) + b
 
 #calculates expectecd eclipse depth for the ESM
 df['ed_ESM'] = Planck_ratio(df['pl_rprs2'], df['st_teff'], 1.1*df['pl_Teq'], 7.5e-6)
 
+df['ed_ESM_night'] = Planck_ratio(df['pl_rprs2'], df['st_teff'], 1000., 7.5e-6)
+df['ed_ESM_day'] = Planck_ratio(df['pl_rprs2'], df['st_teff'], df['pl_tday'], 7.5e-6)
+
 df['ESM'] = 4.29 * df['ed_ESM'] * 10 ** (-0.2*df['sy_kmag'])
+
+df['SN_night'] =  df['ed_ESM_night'] * 10 ** (-0.2*df['sy_kmag'])
+df['SN_day'] = df['ed_ESM_day'] * 10 ** (-0.2*df['sy_kmag'])
 
 
 ###############################################################
 # save data frame
 
-df.to_csv("NASAExoArchive_" + datetime.today().strftime("%Y-%m-%d") + "_aggregate.csv")
+df.to_csv("NASAExoArchive_" + datetime.today().strftime("%Y-%m-%d") + "_aggregate.csv", index=False)
 
